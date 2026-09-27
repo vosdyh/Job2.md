@@ -127,8 +127,12 @@ class LinkedInStrategy {
         const isRegexMatchUI = /^\d+\s*notifications?$/i.test(text) || 
                                /^\d+\s*applicants?$/i.test(text) || 
                                /^\d+\s*people clicked apply$/i.test(text);
+        const isFeedHeader = lowerText.includes('jobs based on your preferences') ||
+                             lowerText.includes('top job picks') ||
+                             lowerText.includes('suggested searches') ||
+                             lowerText.includes('search results');
 
-        if (isExactMatchUI || isRegexMatchUI) {
+        if (isExactMatchUI || isRegexMatchUI || isFeedHeader) {
             continue;
         }
 

@@ -130,7 +130,10 @@ class LinkedInStrategy {
         // Find the closest block container to grab the full title if it's split, but safely fall back to the text node
         const block = currentNode.parentElement.closest('h1, h2, h3, h4, p, div');
         if (block) {
-          title = block.textContent.replace(/\s+/g, ' ').trim();
+          const clone = block.cloneNode(true);
+          const elementsToRemove = clone.querySelectorAll('a, span');
+          elementsToRemove.forEach(el => el.remove());
+          title = clone.textContent.replace(/\s+/g, ' ').trim();
         } else {
           title = currentNode.nodeValue.trim();
         }
@@ -140,13 +143,12 @@ class LinkedInStrategy {
 
     // 2. Company Name
     let company = 'Unknown Company';
-    const companyContainer = deepQuerySelector('div[aria-label^="Company, "]', root);
+    const companyContainers = Array.from(root.querySelectorAll('div[aria-label^="Company, "]')).filter(el => el.offsetParent !== null);
+    const companyContainer = companyContainers[0]; // enforce offsetParent !== null
     if (companyContainer) {
-      const companyLink = deepQuerySelector('a', companyContainer);
+      const companyLink = companyContainer.querySelector('a');
       if (companyLink) {
         company = companyLink.textContent.replace(/\s+/g, ' ').trim();
-      } else {
-        company = companyContainer.textContent.replace(/\s+/g, ' ').trim();
       }
     } else {
       // Fallback
@@ -161,21 +163,31 @@ class LinkedInStrategy {
     }
 
     // 3. Metadata
-    let metadata = '';
+    let metadata = [];
     const paragraphs = deepQuerySelectorAll('p', root); // Find a container that holds metadata
     for (const p of paragraphs) {
       if (isElementVisible(p) && p.textContent.includes('·')) {
-        const spans = deepQuerySelectorAll('span', p);
+        const spans = p.querySelectorAll('span');
         if (spans.length >= 2) {
-          metadata = p.textContent.replace(/\s+/g, ' ').trim();
-          break;
+          const parts = [];
+          for (const span of spans) {
+            const text = span.textContent.replace(/\s+/g, ' ').trim();
+            if (text && text !== '·' && !parts.includes(text)) {
+              parts.push(text);
+            }
+          }
+          if (parts.length > 0) {
+            metadata = parts;
+            break;
+          }
         }
       }
     }
 
     // 4. Job Description
     let html = null;
-    const descContainer = deepQuerySelector('span[data-testid="expandable-text-box"]', root);
+    const descContainers = Array.from(root.querySelectorAll('span[data-testid="expandable-text-box"]')).filter(el => el.offsetParent !== null);
+    const descContainer = descContainers[0]; // enforce offsetParent !== null
     if (descContainer) {
       const sanitized = sanitizeNode(descContainer);
       html = sanitized.innerHTML;
@@ -190,11 +202,23 @@ class LinkedInStrategy {
       html = extractHtmlWithFallbacks(descSelectors, root);
     }
 
+    // 5. Job URL
+    let url = window.location.href;
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('currentJobId')) {
+      const jobId = urlParams.get('currentJobId');
+      url = `https://www.linkedin.com/jobs/view/${jobId}/`;
+    } else {
+      url = window.location.origin + window.location.pathname;
+    }
+
     return {
+      platform: "LinkedIn",
       title,
       company,
       metadata,
-      html
+      html,
+      url
     };
   }
 }
@@ -234,6 +258,7 @@ class IndeedStrategy {
     ];
 
     return {
+      platform: "Indeed",
       title: extractTextWithFallbacks(titleSelectors, root) || 'Unknown Title',
       company: extractTextWithFallbacks(companySelectors, root) || 'Unknown Company',
       html: extractHtmlWithFallbacks(descSelectors, root)
@@ -266,6 +291,7 @@ class ZipRecruiterStrategy {
     ];
 
     return {
+      platform: "ZipRecruiter",
       title: extractTextWithFallbacks(titleSelectors, root) || 'Unknown Title',
       company: extractTextWithFallbacks(companySelectors, root) || 'Unknown Company',
       html: extractHtmlWithFallbacks(descSelectors, root)
@@ -319,17 +345,35 @@ class JobScraper {
          return { error: 'Markdown converter failed to initialize.' };
       }
 
-      let markdown = this.turndownService.turndown(data.html);
+      let markdownBody = this.turndownService.turndown(data.html);
 
-      // Prepend metadata if it exists
-      if (data.metadata) {
-        markdown = `**Metadata:** ${data.metadata}\n\n${markdown}`;
+      let header = `# ${data.title}`;
+      let companyAndMetaParts = [`**${data.company}**`];
+
+      if (Array.isArray(data.metadata)) {
+         data.metadata.forEach(item => {
+             companyAndMetaParts.push(`**${item}**`);
+         });
+      } else if (data.metadata && typeof data.metadata === 'string') {
+         companyAndMetaParts.push(`**${data.metadata}**`);
       }
 
+      let metaLine = companyAndMetaParts.join(' | ');
+
+      let footer = '';
+      if (data.url) {
+         footer = `\n\n---\n${data.url}`;
+      } else {
+         footer = `\n\n---\n${window.location.href}`;
+      }
+
+      let finalMarkdown = `${header}\n${metaLine}\n\n${markdownBody}${footer}`;
+
       return {
+        platform: data.platform,
         title: data.title,
         company: data.company,
-        markdown: markdown,
+        markdown: finalMarkdown,
         error: null
       };
 

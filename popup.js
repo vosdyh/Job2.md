@@ -43,12 +43,13 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error(response.error);
       }
 
-      const { title, company, markdown } = response;
+      const { platform, title, company, markdown } = response;
 
       // Sanitize names for the filename
+      const cleanPlatform = sanitizeFilename(platform) || 'Unknown Platform';
       const cleanCompany = sanitizeFilename(company) || 'Unknown Company';
       const cleanTitle = sanitizeFilename(title) || 'Unknown Title';
-      const filename = `Job_Descriptions/${cleanCompany} - ${cleanTitle}.md`;
+      const filename = `Job_Descriptions/${cleanPlatform} - ${cleanCompany} - ${cleanTitle}.md`;
 
       // Create a Blob from the Markdown text
       const blob = new Blob([markdown], { type: 'text/markdown' });

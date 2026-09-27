@@ -101,52 +101,57 @@ function extractHtmlWithFallbacks(selectors, root = document) {
 class LinkedInStrategy {
   extract() {
     // 1. Find the Root
-    let rootCandidates = Array.from(deepQuerySelectorAll('[data-sdui-screen*="JobDetails"]'));
-    let root = rootCandidates.find(isElementVisible);
+    let root = null;
+    const leftList = deepQuerySelector('[data-testid="lazy-column"]');
 
-    if (!root) {
-        // Context-aware fallback: Try strict right-pane containers first, then safe broader layouts
-        root = deepQuerySelector('.jobs-search__job-details--container') ||
-               deepQuerySelector('.job-details') ||
-               deepQuerySelector('.job-view-layout') ||
-               deepQuerySelector('main');
+    if (leftList && leftList.nextElementSibling) {
+        // Multi-pane: The right job detail pane is the direct sibling of the left list
+        root = leftList.nextElementSibling;
+    } else {
+        // Single-pane: Safely default to main workspace
+        root = deepQuerySelector('main[id="workspace"]') || deepQuerySelector('main') || document.body;
     }
 
     if (!root) {
         return { platform: 'LinkedIn', title: 'Unknown Title', company: 'Unknown Company', metadata: [], html: null, url: window.location.href };
     }
 
-    // 2. Query Candidates
+    // 2. Extract Title by Largest Font Size
     const candidates = deepQuerySelectorAll('h1, h2, h3, p, a', root);
-    let title = 'Unknown Title';
+    let maxFontSize = 0;
+    let bestTitle = 'Unknown Title';
 
-    // 3. Extract Title
     for (const candidate of candidates) {
         if (!isElementVisible(candidate)) continue;
 
         const clone = candidate.cloneNode(true);
-        // Strip badges without deleting valid link text
+        // Strip visual badges
         const artifacts = clone.querySelectorAll('svg, img, [aria-label*="Verified"], [aria-label*="Promoted"]');
         artifacts.forEach(el => el.remove());
         
         const text = clone.textContent.replace(/\s+/g, ' ').trim();
         const lowerText = text.toLowerCase();
         
-        // UI Noise Filters
+        // Standard Noise Filters
         const isExactMatchUI = ['home', 'my network', 'jobs', 'messaging', 'notifications', 'me', 'hiring', 'apply', 'save'].includes(lowerText);
         const isRegexMatchUI = /^\d+\s*notifications?$/i.test(text) || /^\d+\s*applicants?$/i.test(text) || /^\d+\s*people clicked apply$/i.test(text);
         const isFeedHeader = lowerText.includes('jobs based on your preferences') || lowerText.includes('top job picks') || lowerText.includes('suggested searches') || lowerText.includes('search results');
 
-        if (isExactMatchUI || isRegexMatchUI || isFeedHeader) {
-            continue;
-        }
+        if (isExactMatchUI || isRegexMatchUI || isFeedHeader) continue;
+        if (text.length <= 5 || text.length > 80) continue;
 
-        // Strict Length Guardrail
-        if (text.length > 5 && text.length <= 80) {
-            title = text;
-            break;
+        // Evaluate Font Size
+        const style = window.getComputedStyle(candidate);
+        const fontSize = parseFloat(style.fontSize) || 0;
+
+        // The largest valid text node is guaranteed to be the Job Title
+        if (fontSize > maxFontSize) {
+            maxFontSize = fontSize;
+            bestTitle = text;
         }
     }
+
+    let title = bestTitle;
 
     // 2. Company Name
     let company = 'Unknown Company';

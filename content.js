@@ -99,57 +99,43 @@ function extractHtmlWithFallbacks(selectors, root = document) {
 // --- Strategies ---
 
 class LinkedInStrategy {
-  sanitizeJobTitle(text) {
-    if (!text) return "Untitled_Job";
-
-    // 1. Strip all newlines and tabs
-    let cleaned = text.replace(/[\r\n\t]/g, '');
-
-    // 2. Replace all illegal OS path characters with a hyphen
-    cleaned = cleaned.replace(/[\\/:*?"<>|]/g, '-');
-
-    // 3. Filter out non-printable characters and unicode artifacts, preserving valid unicode letters
-    cleaned = cleaned.replace(/[^\x20-\x7E\p{L}\p{N}\p{P}\p{M}\p{Z}]/gu, '');
-
-    // 4. Collapse multiple consecutive spaces into a single space
-    cleaned = cleaned.replace(/\s+/g, ' ');
-
-    // 5. Trim leading and trailing whitespace and hyphens
-    cleaned = cleaned.replace(/^[- \s]+|[- \s]+$/g, '');
-
-    return cleaned || "Untitled_Job";
-  }
-
   extract() {
-    let root = null;
-    let titleNode = null;
-    let title = "Untitled_Job";
-    const path = window.location.pathname;
-
-    if (path.includes('/jobs/view/')) {
-        root = deepQuerySelector('.job-view-layout') || deepQuerySelector('main');
-        if (root) {
-            titleNode = deepQuerySelector('h1.job-details-jobs-unified-top-card__job-title', root) || deepQuerySelector('.top-card-layout__title', root);
-        }
-    } else if (path.includes('/jobs/search/') || path.includes('/jobs/collections/')) {
-        root = deepQuerySelector('.jobs-search__job-details--container') || deepQuerySelector('.job-details');
-        if (root) {
-            titleNode = deepQuerySelector('h2.job-details-jobs-unified-top-card__job-title', root) || deepQuerySelector('.job-details-jobs-unified-top-card__job-title a', root);
-        }
+    // Locate the active job details pane first, ensuring we are within the correct active pane.
+    let rootCandidates = Array.from(deepQuerySelectorAll('[data-sdui-screen*="JobDetails"]'));
+    if (rootCandidates.length === 0) {
+        rootCandidates = Array.from(deepQuerySelectorAll('section[aria-label="Primary content"]'));
     }
+    let root = rootCandidates.find(isElementVisible);
 
     if (!root) {
-        // Fallback for unmatched URLs or missing containers
-        root = document.createElement('div');
+        root = deepQuerySelector('.job-view-layout') || deepQuerySelector('main') || document.body;
     }
 
     // 1. Job Title
-    if (titleNode) {
-        const clone = titleNode.cloneNode(true);
-        const elementsToRemove = deepQuerySelectorAll('svg, img, [aria-label*="Verified"]', clone);
+    let title = 'Unknown Title';
+    const candidates = deepQuerySelectorAll('h1, h2, p', root);
+    
+    for (const candidate of candidates) {
+        const clone = candidate.cloneNode(true);
+        const elementsToRemove = clone.querySelectorAll('svg, img, [aria-label*="Verified"], [aria-label*="Promoted"]');
         elementsToRemove.forEach(el => el.remove());
         
-        title = this.sanitizeJobTitle(clone.textContent);
+        const text = clone.textContent.replace(/\s+/g, ' ').trim();
+        const lowerText = text.toLowerCase();
+        
+        const isExactMatchUI = ['home', 'my network', 'jobs', 'messaging', 'notifications', 'me', 'hiring'].includes(lowerText);
+        const isRegexMatchUI = /^\d+\s*notifications?$/i.test(text) || 
+                               /^\d+\s*applicants?$/i.test(text) || 
+                               /^\d+\s*people clicked apply$/i.test(text);
+
+        if (isExactMatchUI || isRegexMatchUI) {
+            continue;
+        }
+
+        if (text.length > 5) {
+            title = text;
+            break;
+        }
     }
 
     // 2. Company Name

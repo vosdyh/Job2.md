@@ -108,21 +108,31 @@ class LinkedInStrategy {
     let root = rootCandidates.find(isElementVisible);
 
     if (!root) {
-        const isSplitView = window.location.pathname.includes('/jobs/search/');
-        root = isSplitView ? (deepQuerySelector('.job-details') || document) : document;
+        root = deepQuerySelector('.job-view-layout') || deepQuerySelector('main') || document.body;
     }
 
     // 1. Job Title
     let title = 'Unknown Title';
     const candidates = deepQuerySelectorAll('h1, h2, p', root);
-
+    
     for (const candidate of candidates) {
         const clone = candidate.cloneNode(true);
         const elementsToRemove = clone.querySelectorAll('a, span');
         elementsToRemove.forEach(el => el.remove());
-
+        
         const text = clone.textContent.replace(/\s+/g, ' ').trim();
-        if (text.length > 2) {
+        const lowerText = text.toLowerCase();
+        
+        const isExactMatchUI = ['home', 'my network', 'jobs', 'messaging', 'notifications', 'me', 'hiring'].includes(lowerText);
+        const isRegexMatchUI = /^\d+\s*notifications?$/i.test(text) || 
+                               /^\d+\s*applicants?$/i.test(text) || 
+                               /^\d+\s*people clicked apply$/i.test(text);
+
+        if (isExactMatchUI || isRegexMatchUI) {
+            continue;
+        }
+
+        if (text.length > 5) {
             title = text;
             break;
         }

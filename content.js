@@ -100,36 +100,101 @@ function extractHtmlWithFallbacks(selectors, root = document) {
 
 class LinkedInStrategy {
   extract() {
-    // Determine context: Split view (search) vs Single job view
-    const isSplitView = window.location.pathname.includes('/jobs/search/');
-    const root = isSplitView ? (deepQuerySelector('.job-details') || document) : document;
+    // Locate the active job details pane first, ensuring we are within the correct active pane.
+    let root = Array.from(deepQuerySelectorAll('[data-display-contents="true"]')).find(isElementVisible);
+    if (!root) {
+      const isSplitView = window.location.pathname.includes('/jobs/search/');
+      root = isSplitView ? (deepQuerySelector('.job-details') || document) : document;
+    }
 
-    const titleSelectors = [
-      'h1.job-details-jobs-unified-top-card__job-title', // Modern detailed view
-      'h1.t-24', // Fallback standard header
-      '.top-card-layout__title',
-      '[data-test-job-title]'
-    ];
+    // 1. Job Title
+    let title = 'Unknown Title';
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: function(node) {
+        if (node.parentElement && isElementVisible(node.parentElement) && node.nodeValue.trim().length > 0) {
+          return NodeFilter.FILTER_ACCEPT;
+        }
+        return NodeFilter.FILTER_SKIP;
+      }
+    });
 
-    const companySelectors = [
-      '.job-details-jobs-unified-top-card__company-name a',
-      '.job-details-jobs-unified-top-card__company-name',
-      '.topcard__org-name-link',
-      'a[data-test-company-name]',
-      '.job-details-jobs-unified-top-card__subtitle-primary-grouping'
-    ];
+    let currentNode;
+    while ((currentNode = walker.nextNode())) {
+      const parentElement = currentNode.parentElement;
+      const style = window.getComputedStyle(parentElement);
+      const fontSize = parseFloat(style.fontSize) || 0;
+      const fontWeight = style.fontWeight;
+      const numericWeight = parseInt(fontWeight) || (fontWeight === 'bold' ? 700 : 400);
 
-    const descSelectors = [
-      '#job-details', // The primary container
-      '.jobs-description-content__text',
-      '.show-more-less-html__markup',
-      'article'
-    ];
+      if (fontSize >= 18 || numericWeight >= 600) {
+        // Find the closest block container to grab the full title if it's split, but safely fall back to the text node
+        const block = currentNode.parentElement.closest('h1, h2, h3, h4, p, div');
+        if (block) {
+          title = block.textContent.replace(/\s+/g, ' ').trim();
+        } else {
+          title = currentNode.nodeValue.trim();
+        }
+        break;
+      }
+    }
+
+    // 2. Company Name
+    let company = 'Unknown Company';
+    const companyContainer = deepQuerySelector('div[aria-label^="Company, "]', root);
+    if (companyContainer) {
+      const companyLink = deepQuerySelector('a', companyContainer);
+      if (companyLink) {
+        company = companyLink.textContent.replace(/\s+/g, ' ').trim();
+      } else {
+        company = companyContainer.textContent.replace(/\s+/g, ' ').trim();
+      }
+    } else {
+      // Fallback
+      const companySelectors = [
+        '.job-details-jobs-unified-top-card__company-name a',
+        '.job-details-jobs-unified-top-card__company-name',
+        '.topcard__org-name-link',
+        'a[data-test-company-name]',
+        '.job-details-jobs-unified-top-card__subtitle-primary-grouping'
+      ];
+      company = extractTextWithFallbacks(companySelectors, root) || 'Unknown Company';
+    }
+
+    // 3. Metadata
+    let metadata = '';
+    const paragraphs = deepQuerySelectorAll('p', root); // Find a container that holds metadata
+    for (const p of paragraphs) {
+      if (isElementVisible(p) && p.textContent.includes('·')) {
+        const spans = deepQuerySelectorAll('span', p);
+        if (spans.length >= 2) {
+          metadata = p.textContent.replace(/\s+/g, ' ').trim();
+          break;
+        }
+      }
+    }
+
+    // 4. Job Description
+    let html = null;
+    const descContainer = deepQuerySelector('span[data-testid="expandable-text-box"]', root);
+    if (descContainer) {
+      const sanitized = sanitizeNode(descContainer);
+      html = sanitized.innerHTML;
+    } else {
+      // Fallback
+      const descSelectors = [
+        '#job-details',
+        '.jobs-description-content__text',
+        '.show-more-less-html__markup',
+        'article'
+      ];
+      html = extractHtmlWithFallbacks(descSelectors, root);
+    }
 
     return {
-      title: extractTextWithFallbacks(titleSelectors, root) || 'Unknown Title',
-      company: extractTextWithFallbacks(companySelectors, root) || 'Unknown Company',
-      html: extractHtmlWithFallbacks(descSelectors, root)
+      title,
+      company,
+      metadata,
+      html
     };
   }
 }
@@ -254,7 +319,12 @@ class JobScraper {
          return { error: 'Markdown converter failed to initialize.' };
       }
 
-      const markdown = this.turndownService.turndown(data.html);
+      let markdown = this.turndownService.turndown(data.html);
+
+      // Prepend metadata if it exists
+      if (data.metadata) {
+        markdown = `**Metadata:** ${data.metadata}\n\n${markdown}`;
+      }
 
       return {
         title: data.title,

@@ -108,7 +108,21 @@ class LinkedInStrategy {
     let root = rootCandidates.find(isElementVisible);
 
     if (!root) {
-        root = deepQuerySelector('.job-view-layout') || deepQuerySelector('main') || document.body;
+        root = deepQuerySelector('.jobs-search__job-details--container') || 
+               deepQuerySelector('.scaffold-layout__detail') || 
+               deepQuerySelector('.job-details') ||
+               deepQuerySelector('[aria-label="Primary content"]'); 
+    }
+
+    if (!root) {
+        return {
+            platform: "LinkedIn",
+            title: 'Unknown Title',
+            company: 'Unknown Company',
+            metadata: [],
+            html: null,
+            url: window.location.href
+        };
     }
 
     // 1. Job Title
@@ -136,7 +150,7 @@ class LinkedInStrategy {
             continue;
         }
 
-        if (text.length > 5) {
+        if (text.length > 5 && text.length <= 80) {
             title = text;
             break;
         }

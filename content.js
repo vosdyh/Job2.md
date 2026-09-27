@@ -132,11 +132,11 @@ class LinkedInStrategy {
             continue;
         }
 
-        if (lowerText.includes('jobs based on your preferences') || 
-            lowerText.includes('top job picks') || 
+        if (lowerText.includes('jobs based on your preferences') ||
+            lowerText.includes('top job picks') ||
             lowerText.includes('suggested searches') ||
-            lowerText.includes('search results')) { 
-            continue; 
+            lowerText.includes('search results')) {
+            continue;
         }
 
         if (text.length > 5) {

@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Job Details to Markdown Extractor",
+  "version": "1.0",
+  "description": "Extracts job titles, companies, and descriptions from LinkedIn, Indeed, and ZipRecruiter and downloads them as Markdown.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "downloads"
+  ],
+  "host_permissions": [
+    "*://*.linkedin.com/*",
+    "*://*.indeed.com/*",
+    "*://*.ziprecruiter.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Extract Job to Markdown"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.linkedin.com/*",
+        "*://*.indeed.com/*",
+        "*://*.ziprecruiter.com/*"
+      ],
+      "all_frames": true,
+      "js": [
+        "lib/turndown.js",
+        "lib/turndown-plugin-gfm.js",
+        "content.js"
+      ]
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "job-markdown-extractor@example.com",
+      "strict_min_version": "109.0"
+    }
+  }
+}

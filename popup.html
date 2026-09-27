@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Job Markdown Extractor</title>
+  <style>
+    body {
+      width: 300px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f9fafb;
+      margin: 0;
+      color: #111827;
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    button:disabled {
+      background-color: #9ca3af;
+      cursor: not-allowed;
+    }
+    #status {
+      margin-top: 12px;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      min-height: 40px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      background-color: #fff;
+      border: 1px solid #e5e7eb;
+      display: none;
+    }
+    .error {
+      color: #dc2626;
+      border-color: #fecaca !important;
+      background-color: #fef2f2 !important;
+    }
+    .success {
+      color: #166534;
+      border-color: #bbf7d0 !important;
+      background-color: #f0fdf4 !important;
+    }
+  </style>
+</head>
+<body>
+  <h2>Job Details Extractor</h2>
+  <button id="extractBtn">Extract Job to Markdown</button>
+  <div id="status"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

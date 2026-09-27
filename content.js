@@ -101,44 +101,31 @@ function extractHtmlWithFallbacks(selectors, root = document) {
 class LinkedInStrategy {
   extract() {
     // Locate the active job details pane first, ensuring we are within the correct active pane.
-    let root = Array.from(deepQuerySelectorAll('[data-display-contents="true"]')).find(isElementVisible);
+    let rootCandidates = Array.from(deepQuerySelectorAll('[data-sdui-screen*="JobDetails"]'));
+    if (rootCandidates.length === 0) {
+        rootCandidates = Array.from(deepQuerySelectorAll('section[aria-label="Primary content"]'));
+    }
+    let root = rootCandidates.find(isElementVisible);
+
     if (!root) {
-      const isSplitView = window.location.pathname.includes('/jobs/search/');
-      root = isSplitView ? (deepQuerySelector('.job-details') || document) : document;
+        const isSplitView = window.location.pathname.includes('/jobs/search/');
+        root = isSplitView ? (deepQuerySelector('.job-details') || document) : document;
     }
 
     // 1. Job Title
     let title = 'Unknown Title';
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-      acceptNode: function(node) {
-        if (node.parentElement && isElementVisible(node.parentElement) && node.nodeValue.trim().length > 0) {
-          return NodeFilter.FILTER_ACCEPT;
-        }
-        return NodeFilter.FILTER_SKIP;
-      }
-    });
+    const candidates = deepQuerySelectorAll('h1, h2, p', root);
 
-    let currentNode;
-    while ((currentNode = walker.nextNode())) {
-      const parentElement = currentNode.parentElement;
-      const style = window.getComputedStyle(parentElement);
-      const fontSize = parseFloat(style.fontSize) || 0;
-      const fontWeight = style.fontWeight;
-      const numericWeight = parseInt(fontWeight) || (fontWeight === 'bold' ? 700 : 400);
+    for (const candidate of candidates) {
+        const clone = candidate.cloneNode(true);
+        const elementsToRemove = clone.querySelectorAll('a, span');
+        elementsToRemove.forEach(el => el.remove());
 
-      if (fontSize >= 18 || numericWeight >= 600) {
-        // Find the closest block container to grab the full title if it's split, but safely fall back to the text node
-        const block = currentNode.parentElement.closest('h1, h2, h3, h4, p, div');
-        if (block) {
-          const clone = block.cloneNode(true);
-          const elementsToRemove = clone.querySelectorAll('a, span');
-          elementsToRemove.forEach(el => el.remove());
-          title = clone.textContent.replace(/\s+/g, ' ').trim();
-        } else {
-          title = currentNode.nodeValue.trim();
+        const text = clone.textContent.replace(/\s+/g, ' ').trim();
+        if (text.length > 2) {
+            title = text;
+            break;
         }
-        break;
-      }
     }
 
     // 2. Company Name

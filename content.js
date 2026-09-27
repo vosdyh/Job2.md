@@ -117,7 +117,7 @@ class LinkedInStrategy {
     
     for (const candidate of candidates) {
         const clone = candidate.cloneNode(true);
-        const elementsToRemove = clone.querySelectorAll('a, span');
+        const elementsToRemove = clone.querySelectorAll('svg, img, [aria-label*="Verified"], [aria-label*="Promoted"]');
         elementsToRemove.forEach(el => el.remove());
         
         const text = clone.textContent.replace(/\s+/g, ' ').trim();

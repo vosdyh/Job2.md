@@ -100,39 +100,49 @@ function extractHtmlWithFallbacks(selectors, root = document) {
 
 class LinkedInStrategy {
   extract() {
-    // Locate the active job details pane first, ensuring we are within the correct active pane.
+    // 1. Find the Root
     let rootCandidates = Array.from(deepQuerySelectorAll('[data-sdui-screen*="JobDetails"]'));
-    if (rootCandidates.length === 0) {
-        rootCandidates = Array.from(deepQuerySelectorAll('section[aria-label="Primary content"]'));
-    }
     let root = rootCandidates.find(isElementVisible);
 
     if (!root) {
-        root = deepQuerySelector('.job-view-layout') || deepQuerySelector('main') || document.body;
+        // Context-aware fallback: Try strict right-pane containers first, then safe broader layouts
+        root = deepQuerySelector('.jobs-search__job-details--container') ||
+               deepQuerySelector('.job-details') ||
+               deepQuerySelector('.job-view-layout') ||
+               deepQuerySelector('main');
     }
 
-    // 1. Job Title
+    if (!root) {
+        return { platform: 'LinkedIn', title: 'Unknown Title', company: 'Unknown Company', metadata: [], html: null, url: window.location.href };
+    }
+
+    // 2. Query Candidates
+    const candidates = deepQuerySelectorAll('h1, h2, h3, p, a', root);
     let title = 'Unknown Title';
-    const candidates = deepQuerySelectorAll('h1, h2, p', root);
-    
+
+    // 3. Extract Title
     for (const candidate of candidates) {
+        if (!isElementVisible(candidate)) continue;
+
         const clone = candidate.cloneNode(true);
-        const elementsToRemove = clone.querySelectorAll('svg, img, [aria-label*="Verified"], [aria-label*="Promoted"]');
-        elementsToRemove.forEach(el => el.remove());
+        // Strip badges without deleting valid link text
+        const artifacts = clone.querySelectorAll('svg, img, [aria-label*="Verified"], [aria-label*="Promoted"]');
+        artifacts.forEach(el => el.remove());
         
         const text = clone.textContent.replace(/\s+/g, ' ').trim();
         const lowerText = text.toLowerCase();
         
-        const isExactMatchUI = ['home', 'my network', 'jobs', 'messaging', 'notifications', 'me', 'hiring'].includes(lowerText);
-        const isRegexMatchUI = /^\d+\s*notifications?$/i.test(text) || 
-                               /^\d+\s*applicants?$/i.test(text) || 
-                               /^\d+\s*people clicked apply$/i.test(text);
+        // UI Noise Filters
+        const isExactMatchUI = ['home', 'my network', 'jobs', 'messaging', 'notifications', 'me', 'hiring', 'apply', 'save'].includes(lowerText);
+        const isRegexMatchUI = /^\d+\s*notifications?$/i.test(text) || /^\d+\s*applicants?$/i.test(text) || /^\d+\s*people clicked apply$/i.test(text);
+        const isFeedHeader = lowerText.includes('jobs based on your preferences') || lowerText.includes('top job picks') || lowerText.includes('suggested searches') || lowerText.includes('search results');
 
-        if (isExactMatchUI || isRegexMatchUI) {
+        if (isExactMatchUI || isRegexMatchUI || isFeedHeader) {
             continue;
         }
 
-        if (text.length > 5) {
+        // Strict Length Guardrail
+        if (text.length > 5 && text.length <= 80) {
             title = text;
             break;
         }

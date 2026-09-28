@@ -333,19 +333,45 @@ class ZipRecruiterStrategy {
   extract() {
     const root = document;
 
-    const titleSelectors = [
-      'h1.job_title',
-      'h1[data-testid="job-title"]',
-      '.job_title_and_company h1',
-      'h1'
-    ];
+    // 1. Extract Title
+    let title = 'Unknown Title';
+    const titleContainer = deepQuerySelector('[data-testid="serp-job-details-title"]', root);
+    const titleNode = titleContainer ? deepQuerySelector('h2', titleContainer) : deepQuerySelector('h1.job_title', root);
 
-    const companySelectors = [
-      '.job_company_name',
-      '[data-testid="job-company"]',
-      '.job_title_and_company a.company_name',
-      '.company_name'
-    ];
+    if (titleNode && isElementVisible(titleNode)) {
+        const text = titleNode.textContent.replace(/\s+/g, ' ').trim();
+        if (text.length > 3 && text.length <= 100) {
+            title = text;
+        }
+    }
+
+    // 2. Extract Company
+    let company = 'Unknown Company';
+    const companyContainer = deepQuerySelector('[data-testid="employer-details-header"]', root) || deepQuerySelector('[data-testid="employer-details-section"]', root);
+    const companyNode = companyContainer ? deepQuerySelector('span.font-bold', companyContainer) : deepQuerySelector('.hiring_company_text', root);
+
+    if (companyNode && isElementVisible(companyNode)) {
+        const text = companyNode.textContent.replace(/\s+/g, ' ').trim();
+        if (text.length > 0) {
+            company = text;
+        }
+    }
+
+    // 3. Extract Location (Metadata)
+    const metadata = [];
+    // In the multi-pane view, location is typically the first paragraph after the title container
+    if (titleContainer) {
+        const locationNode = titleContainer.nextElementSibling;
+        if (locationNode && locationNode.tagName.toLowerCase() === 'div') {
+            const pNode = deepQuerySelector('p', locationNode);
+            if (pNode && isElementVisible(pNode)) {
+                const locText = pNode.textContent.replace(/\s+/g, ' ').trim();
+                if (locText.length > 0) {
+                    metadata.push(locText);
+                }
+            }
+        }
+    }
 
     const descSelectors = [
       '.job_description',
@@ -355,9 +381,11 @@ class ZipRecruiterStrategy {
 
     return {
       platform: "ZipRecruiter",
-      title: extractTextWithFallbacks(titleSelectors, root) || 'Unknown Title',
-      company: extractTextWithFallbacks(companySelectors, root) || 'Unknown Company',
-      html: extractHtmlWithFallbacks(descSelectors, root)
+      title: title,
+      company: company,
+      metadata: metadata,
+      html: extractHtmlWithFallbacks(descSelectors, root),
+      url: window.location.href
     };
   }
 }

@@ -373,19 +373,49 @@ class ZipRecruiterStrategy {
         }
     }
 
+    // Extract Job Highlights (e.g., Pay, Job Type, Benefits)
+    const highlightNodes = root.querySelectorAll('.flex.flex-col.gap-y-8 .flex.gap-x-12 p');
+    highlightNodes.forEach(node => {
+        if (isElementVisible(node)) {
+            const text = node.textContent.replace(/\s+/g, ' ').trim();
+            if (text.length > 0 && !metadata.includes(text)) {
+                metadata.push(text);
+            }
+        }
+    });
+
     const descSelectors = [
         '.whitespace-pre-line',
         '.job_description',
         '[data-testid="job-details-scroll-container"]'
     ];
 
+    let html = extractHtmlWithFallbacks(descSelectors, root);
+
+    // Extract & Prepend "Key responsibilities" for the single-pane view
+    const headers = root.querySelectorAll('h2');
+    let responsibilitiesHtml = '';
+    for (const h2 of headers) {
+        if (h2.textContent.trim().toLowerCase() === 'key responsibilities') {
+            const ul = h2.nextElementSibling;
+            if (ul && ul.tagName.toLowerCase() === 'ul') {
+                responsibilitiesHtml = `<h2>Key responsibilities</h2>${ul.outerHTML}<br><br>`;
+            }
+            break;
+        }
+    }
+
+    if (responsibilitiesHtml && html && !html.includes('Key responsibilities')) {
+        html = responsibilitiesHtml + html;
+    }
+
     return {
-      platform: "ZipRecruiter",
-      title: title,
-      company: company,
-      metadata: metadata,
-      html: extractHtmlWithFallbacks(descSelectors, root),
-      url: window.location.href
+        platform: 'ZipRecruiter',
+        title: title,
+        company: company,
+        metadata: metadata,
+        html: html,
+        url: window.location.href
     };
   }
 }

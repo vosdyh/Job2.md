@@ -237,24 +237,33 @@ class LinkedInStrategy {
 
 class IndeedStrategy {
   extract() {
-    // Indeed often uses iframes for the split view right-hand pane.
-    // Due to all_frames: true, this script runs in the iframe as well.
-    // If we're in the top window of a search page, we might want to tell the user to click a job,
-    // or rely on the script running in the active iframe.
-    // For Indeed, usually the job detail is in a container called vjs-container or jobsearch-ViewJobLayout
+    // 1. Find the Root
+    let root = deepQuerySelector('[data-testid="viewjob-main-content"]');
 
-    let root = document;
-    if (window.location.pathname.includes('/jobs')) {
-       // Search page, look for the split pane container if it exists
-       root = deepQuerySelector('.jobsearch-RightPane') || document;
+    if (!root) {
+        // Fallback for single-pane or alternate layouts
+        root = deepQuerySelector('.jobsearch-JobComponent') || deepQuerySelector('main') || document.body;
     }
 
-    const titleSelectors = [
-      'h1.jobsearch-JobInfoHeader-title',
-      'h1[data-testid="jobsearch-JobInfoHeader-title"]',
-      '.jobsearch-JobInfoHeader-title-container h1',
-      'h1'
-    ];
+    if (!root) {
+        return { platform: 'Indeed', title: 'Unknown Title', company: 'Unknown Company', metadata: [], html: null, url: window.location.href };
+    }
+
+    // 2. Extract Title
+    let title = 'Unknown Title';
+    const titleElement = deepQuerySelector('[data-testid="vj-job-title"]', root) || deepQuerySelector('h1.jobsearch-JobInfoHeader-title', root);
+
+    if (titleElement && isElementVisible(titleElement)) {
+        const clone = titleElement.cloneNode(true);
+        // Strip any potential visual badges (though rare on Indeed titles)
+        const artifacts = clone.querySelectorAll('svg, img');
+        artifacts.forEach(el => el.remove());
+
+        const text = clone.textContent.replace(/\s+/g, ' ').trim();
+        if (text.length > 3 && text.length <= 100) {
+            title = text;
+        }
+    }
 
     const companySelectors = [
       '[data-testid="inlineHeader-companyName"]',
@@ -271,9 +280,11 @@ class IndeedStrategy {
 
     return {
       platform: "Indeed",
-      title: extractTextWithFallbacks(titleSelectors, root) || 'Unknown Title',
+      title: title,
       company: extractTextWithFallbacks(companySelectors, root) || 'Unknown Company',
-      html: extractHtmlWithFallbacks(descSelectors, root)
+      metadata: [],
+      html: extractHtmlWithFallbacks(descSelectors, root),
+      url: window.location.href
     };
   }
 }

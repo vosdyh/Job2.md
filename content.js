@@ -273,9 +273,10 @@ class IndeedStrategy {
     ];
 
     const descSelectors = [
-      '#jobDescriptionText',
-      '.jobsearch-jobDescriptionText',
-      '[data-testid="jobsearch-jobDescriptionText"]'
+        '.react-native-html-content',
+        '.simple-job-description-html',
+        '#jobDescriptionText',
+        '.jobsearch-JobComponent-description'
     ];
 
     return {

@@ -373,16 +373,21 @@ class ZipRecruiterStrategy {
         }
     }
 
-    // Extract Job Highlights (e.g., Pay, Job Type, Benefits)
+    // Extract Job Highlights as an HTML list instead of metadata
     const highlightNodes = root.querySelectorAll('.flex.flex-col.gap-y-8 .flex.gap-x-12 p');
-    highlightNodes.forEach(node => {
-        if (isElementVisible(node)) {
-            const text = node.textContent.replace(/\s+/g, ' ').trim();
-            if (text.length > 0 && !metadata.includes(text)) {
-                metadata.push(text);
+    let highlightsHtml = '';
+    if (highlightNodes.length > 0) {
+        highlightsHtml = '<ul>';
+        highlightNodes.forEach(node => {
+            if (isElementVisible(node)) {
+                const text = node.textContent.replace(/\s+/g, ' ').trim();
+                if (text.length > 0) {
+                    highlightsHtml += `<li>${text}</li>`;
+                }
             }
-        }
-    });
+        });
+        highlightsHtml += '</ul>';
+    }
 
     const descSelectors = [
         '.whitespace-pre-line',
@@ -392,28 +397,35 @@ class ZipRecruiterStrategy {
 
     let html = extractHtmlWithFallbacks(descSelectors, root);
 
-    // Extract & Prepend "Key responsibilities" for the single-pane view
+    // Extract Key responsibilities and fix Markdown double-spacing
     const headers = root.querySelectorAll('h2');
     let responsibilitiesHtml = '';
     for (const h2 of headers) {
         if (h2.textContent.trim().toLowerCase() === 'key responsibilities') {
             const ul = h2.nextElementSibling;
             if (ul && ul.tagName.toLowerCase() === 'ul') {
-                responsibilitiesHtml = `<h2>Key responsibilities</h2>${ul.outerHTML}<br><br>`;
+                // Strip inner <p> tags to prevent double-spaced markdown bullets
+                const cleanUlHtml = ul.outerHTML.replace(/<\/?p[^>]*>/gi, '');
+                responsibilitiesHtml = `<h2>Key responsibilities</h2>${cleanUlHtml}`;
             }
             break;
         }
     }
 
-    if (responsibilitiesHtml && html && !html.includes('Key responsibilities')) {
-        html = responsibilitiesHtml + html;
+    // Prepend both sections to the main HTML payload
+    let prependContent = '';
+    if (highlightsHtml) prependContent += highlightsHtml;
+    if (responsibilitiesHtml && html && !html.includes('Key responsibilities')) prependContent += responsibilitiesHtml;
+
+    if (prependContent) {
+        html = prependContent + html;
     }
 
     return {
         platform: 'ZipRecruiter',
         title: title,
         company: company,
-        metadata: metadata,
+        metadata: metadata, // Now only contains the Location string
         html: html,
         url: window.location.href
     };

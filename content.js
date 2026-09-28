@@ -374,9 +374,9 @@ class ZipRecruiterStrategy {
     }
 
     const descSelectors = [
-      '.job_description',
-      '[data-testid="job-description"]',
-      '#job_desc'
+        '.whitespace-pre-line',
+        '.job_description',
+        '[data-testid="job-details-scroll-container"]'
     ];
 
     return {

@@ -265,12 +265,51 @@ class IndeedStrategy {
         }
     }
 
-    const companySelectors = [
-      '[data-testid="inlineHeader-companyName"]',
-      '.jobsearch-CompanyInfoContainer a',
-      '.jobsearch-JobInfoHeader-subtitle div[data-company-name="true"]',
-      '.jobsearch-CompanyReview--heading'
-    ];
+    // 3. Extract Company Name
+    let company = 'Unknown Company';
+    // Target the company profile link or standard test ID
+    const companyNode = deepQuerySelector('a[href*="/cmp/"]', root) || deepQuerySelector('[data-testid="inlineHeader-companyName"]', root) || deepQuerySelector('[data-testid="company-name"]', root);
+
+    if (companyNode && isElementVisible(companyNode)) {
+        const clone = companyNode.cloneNode(true);
+        // Strip external link SVGs
+        clone.querySelectorAll('svg, img').forEach(el => el.remove());
+        const text = clone.textContent.replace(/\s+/g, ' ').trim();
+        if (text.length > 0) {
+            company = text;
+        }
+    }
+
+    // 4. Extract Location (Metadata)
+    const metadata = [];
+    const locationNode = deepQuerySelector('[data-testid="inlineHeader-companyLocation"]', root) || deepQuerySelector('[data-testid="job-location"]', root);
+
+    if (locationNode && isElementVisible(locationNode)) {
+        metadata.push(locationNode.textContent.replace(/\s+/g, ' ').trim());
+    } else if (companyNode) {
+        // Structural Fallback: If no test ID exists, check the immediate sibling wrappers of the company node
+        let currentParent = companyNode.parentElement;
+        let fallbackLocation = null;
+
+        // Walk up a few levels to find the adjacent location div
+        for (let i = 0; i < 3; i++) {
+            if (!currentParent || currentParent === root) break;
+            const nextSibling = currentParent.nextElementSibling;
+            if (nextSibling && isElementVisible(nextSibling)) {
+                const siblingText = nextSibling.textContent.replace(/\s+/g, ' ').trim();
+                // Locations are typically short strings (e.g., "Fort Myers, FL 33901")
+                if (siblingText.length > 0 && siblingText.length < 50) {
+                    fallbackLocation = siblingText;
+                    break;
+                }
+            }
+            currentParent = currentParent.parentElement;
+        }
+
+        if (fallbackLocation) {
+            metadata.push(fallbackLocation);
+        }
+    }
 
     const descSelectors = [
         '.react-native-html-content',
@@ -282,8 +321,8 @@ class IndeedStrategy {
     return {
       platform: "Indeed",
       title: title,
-      company: extractTextWithFallbacks(companySelectors, root) || 'Unknown Company',
-      metadata: [],
+      company: company,
+      metadata: metadata,
       html: extractHtmlWithFallbacks(descSelectors, root),
       url: window.location.href
     };

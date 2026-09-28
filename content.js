@@ -96,8 +96,11 @@ async function extractTextWithFallbacks(selectors, root = document) {
   return pollWithRetry(() => {
     for (const selector of selectors) {
       const el = deepQuerySelector(selector, root);
-      if (el && el.textContent.trim()) {
-        return el.textContent.trim().replace(/\s+/g, ' '); // Normalize whitespace
+      if (el) {
+        const text = (el.innerText || el.textContent || '').trim();
+        if (text) {
+          return text.replace(/\s+/g, ' '); // Normalize whitespace
+        }
       }
     }
     return null;
@@ -289,19 +292,23 @@ class IndeedStrategy {
     }
 
     // 3. Extract Company Name
-    let company = 'Unknown Company';
-    // Target the company profile link or standard test ID
+    const companySelectors = [
+      '[data-testid="inlineHeader-companyName"]',
+      '[data-company-name="true"]',
+      '[data-testid="company-name"]',
+      '.jobsearch-CompanyInfoContainer',
+      '.jobsearch-JobInfoHeader-companyName',
+      '.jobsearch-CompanyInfoWithoutHeaderImage',
+      '.selected [data-testid="company-name"]',
+      '.selected .companyName',
+      'a[href*="/cmp/"]'
+    ];
+    let company = (await extractTextWithFallbacks(companySelectors, root)) || 'Unknown Company';
+
+    // To preserve fallback logic for location which depends on `companyNode` (if it was an element)
+    // we need to still find a companyNode if we want to use the structural fallback.
     const companyNode = deepQuerySelector('a[href*="/cmp/"]', root) || deepQuerySelector('[data-testid="inlineHeader-companyName"]', root) || deepQuerySelector('[data-testid="company-name"]', root);
 
-    if (companyNode && isElementVisible(companyNode)) {
-        const clone = companyNode.cloneNode(true);
-        // Strip external link SVGs
-        clone.querySelectorAll('svg, img').forEach(el => el.remove());
-        const text = clone.textContent.replace(/\s+/g, ' ').trim();
-        if (text.length > 0) {
-            company = text;
-        }
-    }
 
     // 4. Extract Location (Metadata)
     const metadata = [];
@@ -342,13 +349,66 @@ class IndeedStrategy {
         '.simple-job-description-html'
     ];
 
+    // 5. Extract Job URL
+    let finalUrl = window.location.href;
+    let jk = null;
+
+    // 5.1 URL Params
+    const urlParams = new URLSearchParams(window.location.search);
+    jk = urlParams.get('vjk') || urlParams.get('jk');
+
+    // 5.2 DOM: Data Attributes and Selected Card
+    if (!jk) {
+      const activeCard = deepQuerySelector('.tapItem.selected') || deepQuerySelector('.job_seen_beacon.selected') || deepQuerySelector('[data-jk]');
+      if (activeCard && activeCard.dataset.jk) {
+        jk = activeCard.dataset.jk;
+      }
+    }
+
+    // 5.3 DOM: Links
+    if (!jk) {
+      const linkMatch = deepQuerySelector('h2 a[href*="/viewjob"]') || deepQuerySelector('a[data-jk]');
+      if (linkMatch) {
+        if (linkMatch.dataset.jk) {
+          jk = linkMatch.dataset.jk;
+        } else {
+          const hrefParams = new URLSearchParams(new URL(linkMatch.href, window.location.origin).search);
+          jk = hrefParams.get('jk');
+        }
+      }
+    }
+
+    // 5.4 Fallback: Page Scripts
+    if (!jk) {
+      const scripts = document.querySelectorAll('script');
+      for (const script of scripts) {
+        const text = script.textContent || '';
+        const viewJobUrlMatch = text.match(/"viewJobUrl":"([^"]+)"/);
+        if (viewJobUrlMatch) {
+          finalUrl = viewJobUrlMatch[1].replace(/\\u002F/g, '/');
+          jk = "found_url"; // flag that we found a full URL
+          break;
+        }
+
+        const jkMatch = text.match(/"jk":"([^"]+)"/);
+        if (jkMatch) {
+          jk = jkMatch[1];
+          break;
+        }
+      }
+    }
+
+    if (jk && jk !== "found_url") {
+      finalUrl = `https://www.indeed.com/viewjob?jk=${jk}`;
+    }
+
     return {
       platform: "Indeed",
       title: title,
       company: company,
       metadata: metadata,
       html: await extractHtmlWithFallbacks(descSelectors, root),
-      url: window.location.href
+      url: finalUrl
     };
   }
 }

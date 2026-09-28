@@ -293,6 +293,7 @@ class IndeedStrategy {
 
     // 3. Extract Company Name
     const companySelectors = [
+      '[data-testid="vj-company-name"]',
       '[data-testid="inlineHeader-companyName"]',
       '[data-company-name="true"]',
       '[data-testid="company-name"]',
@@ -307,7 +308,7 @@ class IndeedStrategy {
 
     // To preserve fallback logic for location which depends on `companyNode` (if it was an element)
     // we need to still find a companyNode if we want to use the structural fallback.
-    const companyNode = deepQuerySelector('a[href*="/cmp/"]', root) || deepQuerySelector('[data-testid="inlineHeader-companyName"]', root) || deepQuerySelector('[data-testid="company-name"]', root);
+    const companyNode = deepQuerySelector('[data-testid="vj-company-name"]', root) || deepQuerySelector('a[href*="/cmp/"]', root) || deepQuerySelector('[data-testid="inlineHeader-companyName"]', root) || deepQuerySelector('[data-testid="company-name"]', root);
 
 
     // 4. Extract Location (Metadata)

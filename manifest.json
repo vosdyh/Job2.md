@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Job Details to Markdown Extractor",
+  "name": "jobTOmd Extractor",
   "version": "1.0",
   "description": "Extracts job titles, companies, and descriptions from LinkedIn, Indeed, and ZipRecruiter and downloads them as Markdown.",
   "icons": {
@@ -20,7 +20,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Extract Job to Markdown",
+    "default_title": "jobTOmd Extractor",
     "default_icon": {
       "16": "jobTOmd.png",
       "48": "jobTOmd.png",

@@ -21,7 +21,11 @@ Successfully parses both dedicated single-page job views and dynamic multi-pane 
 * **Dynamic UI Filtering:** Explicitly filters out dynamically injected feed headers such as "Jobs based on your preferences," "Top job picks," and "Suggested searches."
 
 ### ZipRecruiter
-*🚧 Under Construction 🚧*
+Successfully parses both dedicated single-page job views and dynamic multi-pane search feeds.
+* **Utility Class Bypass & Test-ID Anchoring:** Circumvents the volatility of constantly shifting Tailwind CSS utility classes by anchoring primary metadata extraction (title, company) to stable parent containers utilizing explicit `data-testid` attributes (e.g., `serp-job-details-title`).
+* **Formatting-Based Container Targeting:** Accurately isolates the main job description container by targeting reliable text-formatting utility classes (e.g., `.whitespace-pre-line`), bypassing the complete lack of semantic IDs on the raw text blocks.
+* **UI De-fragmentation & Payload Reassembly:** Dynamically hunts down and extracts fragmented UI components—such as isolated job highlights and "Key responsibilities" blocks—that ZipRecruiter stores outside the main description body, stitching them back into a single cohesive HTML payload prior to conversion.
+* **Nested Artifact Stripping:** Systematically strips nested `<p>` tags from within extracted HTML list items (`<li>`) before pushing to the local Turndown library, preventing the engine from erroneously rendering double-spaced bullet points in the final Markdown document.
 
 ### Indeed
 Successfully parses both dedicated single-page job views and dynamic multi-pane search feeds.

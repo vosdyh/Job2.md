@@ -24,4 +24,8 @@ Successfully parses both dedicated single-page job views and dynamic multi-pane 
 *🚧 Under Construction 🚧*
 
 ### Indeed
-*🚧 Under Construction 🚧*
+Successfully parses both dedicated single-page job views and dynamic multi-pane search feeds.
+* **Semantic Test-ID Targeting:** Bypasses Indeed's heavily obfuscated atomic CSS (e.g., `css-146c3p1`) by strictly anchoring extraction to reliable `data-testid` attributes like `viewjob-main-content` and `vj-job-title`[cite: 27].
+* **React Native Web Compatibility:** Identifies and extracts description payloads wrapped in modern `.react-native-html-content` and `.simple-job-description-html` containers, eliminating reliance on deprecated static IDs.
+* **Structural DOM-Walking:** Implements a fallback mechanism that walks the DOM tree relative to the company profile node to reliably extract adjacent location metadata (e.g., "Fort Myers, FL 33901") when explicit tags are absent.
+* **Inline Artifact Stripping:** Clones text nodes to safely strip injected SVGs (such as external link icons adjacent to company profile links) before formatting, ensuring clean Markdown output.

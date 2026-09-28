@@ -1,5 +1,23 @@
 // --- Helpers ---
 
+// Async polling helper to handle asynchronous DOM hydration in SPAs
+async function pollWithRetry(callback, interval = 250, timeout = 3000) {
+  const startTime = Date.now();
+  return new Promise((resolve) => {
+    const checkCondition = () => {
+      const result = callback();
+      if (result) {
+        resolve(result);
+      } else if (Date.now() - startTime >= timeout) {
+        resolve(null);
+      } else {
+        setTimeout(checkCondition, interval);
+      }
+    };
+    checkCondition();
+  });
+}
+
 // Checks if an element is visible in the DOM (The SPA Problem)
 function isElementVisible(el) {
   if (!el) return false;
@@ -74,32 +92,36 @@ function sanitizeNode(node) {
 }
 
 // Tries a list of selectors and returns the text content of the first matching, visible element
-function extractTextWithFallbacks(selectors, root = document) {
-  for (const selector of selectors) {
-    const el = deepQuerySelector(selector, root);
-    if (el && el.textContent.trim()) {
-      return el.textContent.trim().replace(/\s+/g, ' '); // Normalize whitespace
+async function extractTextWithFallbacks(selectors, root = document) {
+  return pollWithRetry(() => {
+    for (const selector of selectors) {
+      const el = deepQuerySelector(selector, root);
+      if (el && el.textContent.trim()) {
+        return el.textContent.trim().replace(/\s+/g, ' '); // Normalize whitespace
+      }
     }
-  }
-  return null;
+    return null;
+  });
 }
 
 // Tries a list of selectors and returns the sanitized HTML of the first matching, visible element
-function extractHtmlWithFallbacks(selectors, root = document) {
-  for (const selector of selectors) {
-    const el = deepQuerySelector(selector, root);
-    if (el) {
-      const sanitized = sanitizeNode(el);
-      return sanitized.innerHTML;
+async function extractHtmlWithFallbacks(selectors, root = document) {
+  return pollWithRetry(() => {
+    for (const selector of selectors) {
+      const el = deepQuerySelector(selector, root);
+      if (el) {
+        const sanitized = sanitizeNode(el);
+        return sanitized.innerHTML;
+      }
     }
-  }
-  return null;
+    return null;
+  });
 }
 
 // --- Strategies ---
 
 class LinkedInStrategy {
-  extract() {
+  async extract() {
     // 1. Find the Root
     let root = null;
     const leftList = deepQuerySelector('[data-testid="lazy-column"]');
@@ -171,7 +193,7 @@ class LinkedInStrategy {
         'a[data-test-company-name]',
         '.job-details-jobs-unified-top-card__subtitle-primary-grouping'
       ];
-      company = extractTextWithFallbacks(companySelectors, root) || 'Unknown Company';
+      company = (await extractTextWithFallbacks(companySelectors, root)) || 'Unknown Company';
     }
 
     // 3. Metadata
@@ -207,11 +229,12 @@ class LinkedInStrategy {
       // Fallback
       const descSelectors = [
         '#job-details',
+        '.jobs-description__content',
         '.jobs-description-content__text',
         '.show-more-less-html__markup',
         'article'
       ];
-      html = extractHtmlWithFallbacks(descSelectors, root);
+      html = await extractHtmlWithFallbacks(descSelectors, root);
     }
 
     // 5. Job URL
@@ -236,7 +259,7 @@ class LinkedInStrategy {
 }
 
 class IndeedStrategy {
-  extract() {
+  async extract() {
     // 1. Find the Root
     let root = deepQuerySelector('[data-testid="viewjob-main-content"]');
 
@@ -312,10 +335,11 @@ class IndeedStrategy {
     }
 
     const descSelectors = [
-        '.react-native-html-content',
-        '.simple-job-description-html',
         '#jobDescriptionText',
-        '.jobsearch-JobComponent-description'
+        '.jobsearch-JobComponent-description',
+        '#vjs-desc',
+        '.react-native-html-content',
+        '.simple-job-description-html'
     ];
 
     return {
@@ -323,14 +347,14 @@ class IndeedStrategy {
       title: title,
       company: company,
       metadata: metadata,
-      html: extractHtmlWithFallbacks(descSelectors, root),
+      html: await extractHtmlWithFallbacks(descSelectors, root),
       url: window.location.href
     };
   }
 }
 
 class ZipRecruiterStrategy {
-  extract() {
+  async extract() {
     const root = document;
 
     // 1. Extract Title
@@ -395,7 +419,7 @@ class ZipRecruiterStrategy {
         '[data-testid="job-details-scroll-container"]'
     ];
 
-    let html = extractHtmlWithFallbacks(descSelectors, root);
+    let html = await extractHtmlWithFallbacks(descSelectors, root);
 
     // Extract Key responsibilities and fix Markdown double-spacing
     const headers = root.querySelectorAll('h2');
@@ -462,13 +486,13 @@ class JobScraper {
     }
   }
 
-  scrape() {
+  async scrape() {
     if (!this.strategy) {
       return { error: 'Unsupported site. Please run on LinkedIn, Indeed, or ZipRecruiter.' };
     }
 
     try {
-      const data = this.strategy.extract();
+      const data = await this.strategy.extract();
 
       if (!data.html) {
         return { error: 'Could not find the job description on this page.' };
@@ -522,9 +546,12 @@ class JobScraper {
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'extract') {
     const scraper = new JobScraper();
-    const result = scraper.scrape();
-    sendResponse(result);
+    scraper.scrape().then(result => {
+      sendResponse(result);
+    }).catch(error => {
+      sendResponse({ error: `Scraping failed: ${error.message}` });
+    });
+    return true; // Keep the message channel open for the async response
   }
-  // Return true if sendResponse will be called asynchronously, but we are synchronous here.
-  // Returning nothing or false is fine for synchronous responses in MV3 Firefox.
+  return false;
 });

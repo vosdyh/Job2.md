@@ -1,10 +1,10 @@
-# Privacy Policy for Job Details to Markdown Extractor
+# Privacy Policy for jobTOmd Extractor
 
 **Last Updated:** September 27, 2026
 
 ## Data Collection and Usage
 
-The "Job Details to Markdown Extractor" extension operates entirely locally on your device. It does not collect, store, transmit, process, or share any personal information, browsing history, or user data.
+The "jobTOmd Extractor" extension operates entirely locally on your device. It does not collect, store, transmit, process, or share any personal information, browsing history, or user data.
 
 ## Local Processing
 

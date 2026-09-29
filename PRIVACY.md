@@ -1,6 +1,6 @@
 # Privacy Policy for jobTOmd Extractor
 
-**Last Updated:** September 27, 2026
+**Last Updated:** September 29, 2026
 
 ## Data Collection and Usage
 

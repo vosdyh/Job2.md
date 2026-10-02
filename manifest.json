@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "jobTOmd Extractor",
+  "name": "Job2.md Extractor",
   "version": "1.4",
   "description": "Extracts job titles, companies, and descriptions from LinkedIn, Indeed, and ZipRecruiter and downloads them as Markdown.",
   "icons": {
-    "16": "jobTOmd16.png",
-    "48": "jobTOmd48.png",
-    "128": "jobTOmd128.png"
+    "16": "Job2.md16.png",
+    "48": "Job2.md48.png",
+    "128": "Job2.md128.png"
   },
   "permissions": [
     "activeTab",
@@ -20,11 +20,11 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "jobTOmd Extractor",
+    "default_title": "Job2.md Extractor",
     "default_icon": {
-      "16": "jobTOmd16.png",
-      "48": "jobTOmd48.png",
-      "128": "jobTOmd128.png"
+      "16": "Job2.md16.png",
+      "48": "Job2.md48.png",
+      "128": "Job2.md128.png"
     }
   },
   "content_scripts": [

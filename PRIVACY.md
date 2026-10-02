@@ -1,10 +1,10 @@
-# Privacy Policy for jobTOmd Extractor
+# Privacy Policy for Job2.md Extractor
 
 **Last Updated:** September 29, 2026
 
 ## Data Collection and Usage
 
-The "jobTOmd Extractor" extension operates entirely locally on your device. It does not collect, store, transmit, process, or share any personal information, browsing history, or user data.
+The "Job2.md Extractor" extension operates entirely locally on your device. It does not collect, store, transmit, process, or share any personal information, browsing history, or user data.
 
 ## Local Processing
 

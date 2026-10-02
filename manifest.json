@@ -22,9 +22,9 @@
     "default_popup": "popup.html",
     "default_title": "Job2.md Extractor",
     "default_icon": {
-      "16": "Job2.md16.png",
-      "48": "Job2.md48.png",
-      "128": "Job2.md128.png"
+      "16": "Job2md16.png",
+      "48": "Job2md48.png",
+      "128": "Job2md128.png"
     }
   },
   "content_scripts": [

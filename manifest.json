@@ -4,9 +4,9 @@
   "version": "1.4",
   "description": "Extracts job titles, companies, and descriptions from LinkedIn, Indeed, and ZipRecruiter and downloads them as Markdown.",
   "icons": {
-    "16": "Job2.md16.png",
-    "48": "Job2.md48.png",
-    "128": "Job2.md128.png"
+    "16": "Job2md16.png",
+    "48": "Job2md48.png",
+    "128": "Job2md128.png"
   },
   "permissions": [
     "activeTab",

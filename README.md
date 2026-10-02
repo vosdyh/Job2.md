@@ -1,4 +1,4 @@
-# jobTOmd Extractor
+# Job2.md Extractor
 
 A robust, cross-platform Manifest V3 WebExtension (Chrome & Firefox) designed to parse complex, heavily obfuscated job board DOMs and extract job descriptions into clean, standardized Markdown files.
 

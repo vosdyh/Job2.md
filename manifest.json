@@ -9,8 +9,6 @@
     "128": "Job2md128.png"
   },
   "permissions": [
-    "activeTab",
-    "scripting",
     "downloads"
   ],
   "host_permissions": [

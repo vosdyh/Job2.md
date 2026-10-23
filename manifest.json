@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Job2.md Extractor",
-  "version": "1.4",
+  "version": "1.5",
   "description": "Extracts job titles, companies, and descriptions from LinkedIn, Indeed, and ZipRecruiter and downloads them as Markdown.",
   "icons": {
     "16": "Job2md16.png",
